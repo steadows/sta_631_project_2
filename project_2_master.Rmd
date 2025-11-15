@@ -20,7 +20,7 @@ editor_options:
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-# Predicting Educational Success
+<h1>Predicting Educational Success</h1>
 
 ## Introduction
 
