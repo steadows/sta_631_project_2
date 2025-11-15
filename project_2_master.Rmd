@@ -99,6 +99,10 @@ df_2019_common <- df_2019_clean %>%
 
 combined <- bind_rows(df_2016_common, df_2019_common)
 
+# filtering for high school students only
+df <- combined %>%
+  filter(ALLGRADEX_std >= 9 & ALLGRADEX_std <= 12)
+
 ```
 
 
