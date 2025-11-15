@@ -51,7 +51,55 @@ provide actionable insights for GVSU’s K–12 Connect initiative, helping info
 recommendations that support students, empower families, and strengthen
 school–family partnerships.
 
+```{r loading and preprocessing, include=FALSE, message=FALSE, warning=FALSE}
+library(tidyverse)
+library(readxl)
+library(dplyr)
 
+df_2019 <- read_excel("pfi-data.xlsx", sheet = "curated 2019")
+df_2016 <- read_excel("pfi-data.xlsx", sheet = "curated 2016")
+
+df_2016 <- df_2016 %>%
+  mutate(
+    ALLGRADEX_2016raw = ALLGRADEX,  # keep original
+    ALLGRADEX_std = case_when(
+      ALLGRADEX == "K" ~ 0,                          # Kindergarten
+      ALLGRADEX %in% as.character(1:12) ~ as.numeric(ALLGRADEX),
+      TRUE ~ NA_real_
+    )
+  )
+
+df_2019 <- df_2019 %>%
+  mutate(
+    ALLGRADEX_2019raw = ALLGRADEX,
+    ALLGRADEX_std = case_when(
+      ALLGRADEX %in% c(2, 3) ~ 0,                       # both K flavors → Kindergarten
+      ALLGRADEX >= 4 & ALLGRADEX <= 15 ~ ALLGRADEX - 3, # 1st–12th → 1–12
+      TRUE ~ NA_real_
+    )
+  )
+
+# Remove original ALLGRADEX from both dfs
+df_2016_clean <- df_2016 %>%
+  select(-ALLGRADEX) %>%
+  mutate(year = 2016)
+
+df_2019_clean <- df_2019 %>%
+  select(-ALLGRADEX) %>%
+  mutate(year = 2019)
+
+# Keep only shared columns (ALLGRADEX_std is shared & aligned)
+common_vars <- intersect(names(df_2016_clean), names(df_2019_clean))
+
+df_2016_common <- df_2016_clean %>%
+  select(all_of(common_vars))
+
+df_2019_common <- df_2019_clean %>%
+  select(all_of(common_vars))
+
+combined <- bind_rows(df_2016_common, df_2019_common)
+
+```
 
 
 
