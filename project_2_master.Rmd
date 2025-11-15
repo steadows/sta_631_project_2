@@ -1,0 +1,57 @@
+---
+title: "Diamonds Group Project 2"
+author: "Vinnie Gambotto, Steve Meadows, Sai Sreyaa Krishna Mallemala"
+date: "`r Sys.Date()`"
+output: 
+   html_document:
+    theme: cosmo
+    toc: yes
+    toc_float:
+      collapsed: true
+    code_folding: hide
+    number_sections: true
+    css: styles.css
+editor_options: 
+  markdown: 
+    wrap: 72
+
+---
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+# Predicting Educational Success
+
+## Introduction
+
+Understanding the factors that contribute to students’ academic success has
+become increasingly important, especially as schools, families, and community
+partners seek effective ways to support K–12 learners. In this project, we
+analyze data from the Parent and Family Involvement (PFI) in Education Survey, a
+nationally representative dataset collected by the U.S. Census Bureau, to
+explore relationships between family engagement, school choice, and student
+academic outcomes.
+
+Our goal is to identify which aspects of family involvement—such as
+participation in school activities, communication with teachers, assistance with
+homework, and perceptions of school quality—are most strongly associated with
+markers of academic success. Using a range of Generalized Linear Models (GLMs)
+and classification tools, including logistic regression, multinomial regression,
+Poisson regression, and Linear and Quadratic Discriminant Analysis (LDA/QDA), we
+aim to build predictive models that highlight the most influential variables.
+
+By applying these statistical learning methods through the tidymodels framework,
+we address the broader research question:
+
+**Which family and school-related factors best predict student academic success, and how can these insights guide effective support strategies for K–12 students?**
+
+The final results will be presented in a concise report that summarizes both our
+modeling process and our key findings. Ultimately, our analysis is designed to
+provide actionable insights for GVSU’s K–12 Connect initiative, helping inform
+recommendations that support students, empower families, and strengthen
+school–family partnerships.
+
+
+
+
+
