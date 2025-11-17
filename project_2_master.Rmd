@@ -55,20 +55,19 @@ school–family partnerships.
 library(tidyverse)
 library(readxl)
 library(dplyr)
+```
 
+
+# Data Loading and Preprocessing
+
+```{r}
+# Load and preprocess the data
 df_2019 <- read_excel("pfi-data.xlsx", sheet = "curated 2019")
-df_2016 <- read_excel("pfi-data.xlsx", sheet = "curated 2016")
+```
 
-df_2016 <- df_2016 %>%
-  mutate(
-    ALLGRADEX_2016raw = ALLGRADEX,  # keep original
-    ALLGRADEX_std = case_when(
-      ALLGRADEX == "K" ~ 0,                          # Kindergarten
-      ALLGRADEX %in% as.character(1:12) ~ as.numeric(ALLGRADEX),
-      TRUE ~ NA_real_
-    )
-  )
+# Standardizing ALLGRADEX for 2019 data
 
+```{r}
 df_2019 <- df_2019 %>%
   mutate(
     ALLGRADEX_2019raw = ALLGRADEX,
@@ -78,31 +77,42 @@ df_2019 <- df_2019 %>%
       TRUE ~ NA_real_
     )
   )
+```
 
-# Remove original ALLGRADEX from both dfs
-df_2016_clean <- df_2016 %>%
-  select(-ALLGRADEX) %>%
-  mutate(year = 2016)
+# Filtering for high school students only
 
-df_2019_clean <- df_2019 %>%
-  select(-ALLGRADEX) %>%
-  mutate(year = 2019)
-
-# Keep only shared columns (ALLGRADEX_std is shared & aligned)
-common_vars <- intersect(names(df_2016_clean), names(df_2019_clean))
-
-df_2016_common <- df_2016_clean %>%
-  select(all_of(common_vars))
-
-df_2019_common <- df_2019_clean %>%
-  select(all_of(common_vars))
-
-combined <- bind_rows(df_2016_common, df_2019_common)
-
-# filtering for high school students only
-df <- combined %>%
+```{r}
+df <- df_2019 %>%
   filter(ALLGRADEX_std >= 9 & ALLGRADEX_std <= 12)
+```
 
+# Handling target variable classes and missing values
+
+```{r}
+df <- df %>%
+  # turn -1 and 5 into NA
+  mutate(SEGRADES = na_if(SEGRADES, -1),
+         SEGRADES = na_if(SEGRADES, 5)) %>%
+
+  # drop rows where SEGRADES is missing
+  filter(!is.na(SEGRADES)) %>%
+
+  # create binary target: high vs low
+  mutate(
+    success = case_when(
+      SEGRADES %in% c(1, 2) ~ "high",
+      SEGRADES %in% c(3, 4) ~ "low"
+    ),
+    success = factor(success, levels = c("low", "high"))
+  )
+
+```
+
+# Removing all unnecessary variables
+
+```{r}
+df <- df %>%
+  select(-ZIPLOCL, -CDOBMM, -CDOBYY, -BASMID, -ALLGRADEX_std, -MOSTIMPT, -INTNUM, -ALLGRADEX_2019raw, -ALLGRADEX, -SEGRADES, - HHPARN19_BRD)
 ```
 
 
