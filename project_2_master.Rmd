@@ -136,6 +136,172 @@ df <- df %>%
 # LDA
 
 # Lasso Logistic Regression
+To try a logistic regression method for our Predicting Educational Success, we decided to use the LASSO regression method with our response variable still being SEGRADES. We decided to remove any rows that are missing to keep a better data set as it was large enough without including the missing variables. We continued with the categorical response of High grade earners being those who had received mostly A's and B's and our Low grade earners, those with C's or D's. 
+
+We chose to do LASSO regression because of how large the raw data set is. With LASSO we can quickly eliminate any predictors that have little to no use for our model or the question we are trying to solve. And with it, our issues with overfitting and multicollinearity are automatically solved within our program and we do not have to do any VIF checks or worry about including too many or too little predictors. 
+
+
+```{r}
+df <- df %>%
+  mutate(
+    across(
+      .cols = where(is.numeric),
+      .fns = ~ na_if(.x , -1)
+    )
+  )
+```
+
+```{r}
+df %>% filter(if_any(everything(), is.na))%>%
+  tally()
+
+```
+
+```{r}
+df<-df %>% drop_na()
+```
+
+```{r}
+df %>% filter(if_any(everything(), is.na))%>%
+  tally()
+```
+
+Separate our numerical variables from the rest of our data to make cleaning out the -1, 0, and 5 values with SEGRADES easier.
+```{r}
+num_vars <- c(
+  "FHWKHRS", 
+  "FSFREQ",
+  "HHTOTALXX",
+  "P1HRSWK",
+  "P1MTHSWRK",
+  "P1AGE",
+  "NUMSIBSX"
+)
+```
+
+```{r}
+df <- df %>%
+  mutate(
+    across(
+      .cols = where(is.numeric) & !all_of(num_vars),  
+      .fns = ~ ifelse(.x < 0, 0, .x)                
+    )
+  )
+
+```
+
+Separate into our test and training set. We will use the training set to run our model. From there we will use the test data for our evaluation. We will then see how well our testing set does later on with this model.
+```{r}
+set.seed(1986)
+
+data_split <- initial_split(df, prop = 0.8, strata = success)
+train <- training(data_split)
+test <- testing(data_split)
+```
+
+```{r}
+train_x <- train %>% select(-success)
+test_x  <- test  %>% select(-success)
+train_x_matrix <- model.matrix(~ . - success - 1, data = train)
+test_x_matrix  <- model.matrix(~ . - success - 1, data = test)
+
+train_y <- train$success
+test_y <- test$success
+
+```
+
+#Building our LASSO model. 
+
+```{r}
+lasso.mod <- glmnet(
+  x = train_x_matrix,
+  y = train_y,
+  alpha = 1, 
+  family = "binomial"
+)
+```
+
+```{r}
+plot(lasso.mod)
+title("LASSO Coefficient Paths")
+```
+Here we can see how each predictor’s coefficient changes as the penalty λ changes. It visualizes variable selection and shrinkage, letting you see which predictors enter the model and when. There are about 6 variables that enter the model early and the rest come around 4.5 for -Log(λ)
+```{r}
+set.seed(1986)
+
+cv.lasso <- cv.glmnet(
+  x = train_x_matrix,
+  y = train_y,
+  alpha = 1,
+  family = "binomial",
+  type.measure = "class"
+)
+
+plot(cv.lasso)
+title("LASSO Cross-Validation Curve")
+
+```
+Above the plot is suggesting about 22 variables as we see the second dash line crossing right there with the MSE's. Right around that point, we have a -Log(λ) of between 3 and 5. And below we see that our best λ value is very small at 0.00841625 suggesting that the more predictors we keep the better our prediction model will be. 
+```{r}
+best_lambda <- cv.lasso$lambda.min
+best_lambda
+
+```
+
+```{r}
+lasso.final <- glmnet(
+  x = train_x_matrix,
+  y = train_y,
+  alpha = 1,
+  lambda = best_lambda,
+  family = "binomial"
+)
+
+coef_final <- coef(lasso.final)
+coef_final
+
+```
+This does work nicely with our MSE plot above as this also concludes with the idea of 22 variables. And the MSE of the 22 variables are better shown below in the table below.
+
+
+```{r}
+tibble(coef_final[coef_final != 0])
+
+
+```
+
+```{r}
+lasso.prob <- predict(cv.lasso, newx = test_x_matrix, s = "lambda.min", type = "response")
+lasso.pred <- ifelse(lasso.prob > 0.5, "high", "low") %>% factor(levels = c("low", "high"))
+mean(lasso.pred == test_y)
+
+```
+Our training model gave us a 91.6% correct classification rate with our test data set, suggesting a very strong model that is consistent and reproducible. 
+```{r}
+table(Predicted = lasso.pred, Actual = test_y)
+
+```
+
+Our main priority is looking at our "false positives", meaning the students we predicted to be high and who are actually low. This is an issue because with our model if we predict someone to be getting high grades and they are actually getting low they would not be getting the help they need. We are not so worried about false negatives as those students are predicted low who are actually high will just get more help and will do better thus furthering themselves away from being predicted as low. So, with our model there is the error of 116 predicted high students who were actually in the low group who would not receive the necessary help.
+
+```{r}
+roc_obj <- roc(test_y, as.numeric(lasso.prob))
+plot(roc_obj)
+auc(roc_obj)
+
+```
+Finally, our Precision Recall Area Under the Curve curve shows that 93.37% of the data is under the curve, showing a very effective model in predicting the low class, or the class that has low grades. This is important as it shows the group that is need of an academic intervention correctly more times or not. So with this model, we are able 
+
+
+```{r}
+coef_df <- as.data.frame(as.matrix(coef_final)) %>%
+  rownames_to_column("variable") %>%
+  rename(coef = s0) %>%
+  filter(coef != 0)
+coef_df
+```
+
+So our LASSO regression model performs at a very high rate in correctly identifying our minority low groups. Our PR-AUC is the best indication of the effectiveness of this model as we have show and stated above with a very high 93.37% correct rate of predicting our low groups. The one downside to this model is how many predictors it requires for it to be accurate, but with a complete data set like this it works exceptionally well. 
 
 # Support Vector Classification
 
