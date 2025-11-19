@@ -71,6 +71,9 @@ df <- df %>%
 df %>% count(success)
 
 ```
+```{r}
+levels(df$success)
+```
 
 # Removing all unnecessary variables
 
@@ -116,9 +119,7 @@ select(success, all_of(predictor_variables))
 This step updates the dataset to keep only the response variable success along
 with the seven predictors that will be used in the LDA model. These predictors
 are for family structure, school type, school choice, internet access, school
-hours, parent education, and number of siblings. A summary() output shows how 
-each predictor is distributed across the data and confirms all seven variables
-are stored as numeric values.
+hours, parent education, and number of siblings.
 
 # Checking whether all variables are numeric
 
@@ -139,16 +140,18 @@ nrow(train_data)
 nrow(test_data)
 ```
 
-Here the data is split into an 80% training set and a 20% test set, preserving 
-roughly the same proportion of low vs high `success` in each. 
-The model, LDA, is fit to the training data and its performance is evaluated on the test data.
+Stratified sampling based on the success variable is used to divide the data into
+an 80% training set and a 20% test set, preserving the same proportion of low and
+high success cases in both sets. This results in 7,472 observations for the training
+set and 1,869 observations for the test set. We train the LDA model on the training
+portion and evaluate the performance of the model using the test portion.
 
 # Fitting the LDA Model
 
 ```{r}
 lda_model <- discrim_linear() %>%
   set_mode("classification") %>%
-  set_engine("MASS") %>%
+  set_engine("MASS", prior = c(low = 0.5, high = 0.5)) %>%
   fit(
     success ~ HHPARN19X + EDCPUB + SCCHOICE +
       EINTNET + SCHLHRSWK + PARGRADEX + NUMSIBSX,
@@ -158,25 +161,26 @@ lda_model <- discrim_linear() %>%
 lda_model
 ```
 
-Using the MASS engine, the LDA model classifies the students into either low or
-high categories of academic success based on the seven predictors describing 
-family structure, school setting, and learning conditions. The first line of the
-output presents the prior probabilities: only 13.22% of the students fall into the
-low-success group, while 86.78% of the students are in the high-success group;
-hence, the dataset is strongly imbalanced. Group means show the average value of
-each predictor in each category of success. For instance, students with low success
-have values like HHPARN19X = 1.786, EINTNET = 3.872, SCHLHRSWK = 3.688, and 
-PARGRADEX = 3.126, while students with high success have slightly higher averages,
-such as EINTNET = 3.910, SCHLHRSWK = 3.776, and PARGRADEX = 3.676, which denote 
-patterns of strong academic performance. 
+The LDA model is estimated using the MASS engine with equal class priors of 0.5
+for both low and high success. Setting equal priors means that both categories
+are given equal importance during classification without regard for the imbalance
+in their numbers within the dataset. The printed output reports these prior
+probabilities first, followed by the group means for each predictor across the
+low and high success categories. For instance, the averages of students in the
+low-success group for the following variables were HHPARN19X = 1.786, EINTNET = 3.872,
+SCHLHRSWK = 3.688, and PARGRADEX = 3.126, while those for students in the high-success
+group were slightly higher, at EINTNET = 3.910, SCHLHRSWK = 3.776, and PARGRADEX = 3.676.
+These represent general patterns that distinguish students who exhibit higher
+performance academically.
 
-Coefficients of the linear discriminant present the contribution of every predictor
-to the separation of groups: negative coefficients, such as HHPARN19X (–0.705) and
-SCCHOICE (–0.590), shift predictions toward the low-success category, while 
-positive coefficients, such as EDCPUB (0.681), EINTNET (0.310), and PARGRADEX (0.467),
-shift predictions toward high success. On the whole, these results express how 
-predictors together finally form the discriminant function used in differentiating 
-between low- and high-performing students.
+The coefficients of the linear discriminant show the contribution that each of the
+predictors makes toward separating the two groups along the LD1 dimension. 
+The negative coefficients, for example, for HHPARN19X (–0.705) and SCCHOICE (–0.590),
+pull predictions over to the low-success category, while positive coefficients, 
+for instance, EDCPUB (0.681), EINTNET (0.310), SCHLHRSWK (0.128), and PARGRADEX (0.467),
+pull predictions to the high-success category. These coefficients indicate the
+direction and strength of each variable's influence in forming the discriminant
+function that differentiates lowand high-success students.
 
 # Getting predictions on test data 
 
@@ -187,11 +191,7 @@ head(lda_test)
 
 
 ```{r}
-conf_mat(
-  lda_test,
-  truth   = success,
-  estimate = .pred_class
-)
+conf_mat(lda_test, truth = success, estimate = .pred_class)
 ```
 
 ```{r}
@@ -216,23 +216,27 @@ ggplot(cm_df, aes(x = Prediction, y = Truth, fill = Freq)) +
 ```{r}
 metrics <- bind_rows(
   accuracy(lda_test, truth = success, estimate = .pred_class),
-  precision(lda_test, truth = success, estimate = .pred_class, event_level = "second"),
-  recall(lda_test, truth = success, estimate = .pred_class, event_level = "second"),
-  f_meas(lda_test, truth = success, estimate = .pred_class, event_level = "second"),
-  roc_auc(lda_test, truth = success, .pred_high)
+  precision(lda_test, truth = success, estimate = .pred_class, event_level = "first"),
+  recall(lda_test, truth = success, estimate = .pred_class, event_level = "first"),
+  f_meas(lda_test, truth = success, estimate = .pred_class, event_level = "first"),
+  roc_auc(lda_test, truth = success, .pred_low)
 )
 
 metrics
 ```
-Various performance metrics were used to test the performance of the LDA model against the test dataset.
-The confusion matrix indicates that 1,614 students were correctly classified by the model,
-leading to an accuracy of 86.36%. The model is very strong in classifying students in the high-success category;
-the precision for this class is very high, with 86.77%, while recall stands at 99.45% and the F1 score is 92.67%.
-The model strongly detects high-performing students. However, it performs poorly in detecting 
-low-success students, mispredicting their class as being high for 246 out of the total. 
-This imbalance is reflected in the ROC AUC value of 0.3277, which suggests poor separation of classes
-while using probability scores. Overall, this model is good in predicting high-success cases but poor
-in predicting the classes of low-success cases, as there is a considerable imbalance in the dataset.
+The confusion matrix from the model shows 1,622 students correctly classified out
+of the total 1,869, giving an accuracy of 66.13%. Most correct predictions occur
+in the high-success category, with 1,092 true high cases identified accurately.
+However, performance is weaker for the low-success group. Out of the 247 actual
+low-success students, only 103 were correctly classified, while 144 were misclassified
+as high success. Such behavior is further emphasized by the value of the evaluation
+metrics: for the low-success class, precision equals 0.21, recall equals 0.54,
+while the F1-score is 0.31, showing limited ability to reliably detect low-success students.
+Correspondingly, the ROC AUC has a value of 0.67, indicating a moderate
+overall ranking ability but not strong separation between the two categories.
+Overall, it performs much better on the identification of high-success students 
+than on the identification of low-success students.
+
 ```{r}
 library(dplyr)
 library(ggplot2)
@@ -258,50 +262,60 @@ ggplot(lda_values, aes(x = LD1, fill = success)) +
   theme_minimal()
 
 ```
-The LD1 plot shows how the LDA model separates the low-success and high-success students
-using the first linear discriminant. If the model is strong, the two curves should have
-very little overlap. In your plot, the red and blue curves representing low success and
-high success, respectively, heavily overlap, which indicates that the model fails to
-distinguish well between these two classes. While there is a slight shift of the 
-high-success group to the right and the low-success group to the left, this separation
-is weak. This confirms, once more, the poor discriminative power of the LDA model,
-with its main causes lying in the high class imbalance of the dataset and the fact
-that predictors do not strongly distinguish between low- and high-success students.
+The LD1 plot presents the way in which the LDA model separates students with
+low academic success (grades 3-4) from those with high academic success (grades 1-2),
+using the first linear discriminant. In a good model, the two density curves
+should be clearly separated. However, this plot results in heavy overlapping,
+which means predictors don't give a clear distinction between the LOW-success
+and HIGH-success groups. While the HIGH-success group shifts slightly to the right
+and the LOW-success group shifts slightly to the left in this plot, the separation
+is weak. This confirms that the model has very poor discriminative power for detecting
+LOW-success students, which is consistent with the evaluation metrics and the imbalance of the dataset.
+
 ```{r}
 library(ggplot2)
 
 # ROC curve data
-roc_data <- roc_curve(
-  lda_test,
-  truth = success,
-  .pred_high
-)
+roc_data <- roc_curve(lda_test, truth = success, .pred_low)
 
-# Plot
+
 ggplot(roc_data, aes(x = 1 - specificity, y = sensitivity)) +
-  geom_line(color = "darkgreen", size = 1.2) +
-  geom_abline(linetype = "dashed", color = "red") +
-  labs(
-    title = "ROC Curve for LDA Model",
-    x = "False Positive Rate (1 - Specificity)",
-    y = "True Positive Rate (Sensitivity)"
-  ) +
-  theme_minimal()
+geom_line(color="darkgreen", size=1.2) +
+geom_abline(linetype="dashed", color="red") +
+labs(title="ROC Curve for LOW Success Detection",
+x="False Positive Rate",
+y="True Positive Rate") +
+theme_minimal()
 
 ```
 
-This ROC curve reflects that the LDA model performs slightly better than random guessing. 
-The green curve lies near the diagonal reference line, which indicates that the model has
-weak ability in distinguishing low-success students from high-success students. 
-This is because the dataset is highly imbalanced, and the model tends to predict 
-"high" most of the time. In summary, the ROC curve indicates poor discriminative power
-and hence has limited usefulness for classification.
+The ROC curve indicates how well the LDA model is able to identify students who
+have low academic success. The green curve lies just above the diagonal reference line,
+suggesting that the model performs only slightly better than random guessing.
+As the false positive rate increases, the true positive rate rises slowly,
+meaning that the model needs to misclassify many high-success students in order
+to detect low-success cases. This reflects that the predicted probabilities for
+low and high success heavily overlap, providing the model with limited power to
+distinguish between them. The model has an AUC of about 0.67, indicating weak
+discriminative ability, thus it can't effectively tell low-success students from high-success students.
 
 
-### Final Conclusion
-Overall, the LDA model has very limited capability in telling low- from
-high-success students. Overall, the LDA model does not turn out very well on the 
-separation of the two Academic Success categories. Both the ROC curve and 
-LD1 distribution show weak separation, and the confusion matrix confirms that the 
-model is performing poorly in assigning cases to the groups. That would seem to imply
-that the linear boundary given by LDA was inadequate for the structure of this dataset.
+# Final Conclusion
+
+The LDA model was developed with the key objective of identifying students at risk
+of low academic success using the main demographic, school-related, and family-related
+predictors. With respect to performance, when the model was tested on the test dataset,
+the results show that while the model performs well in identifying high-success students,
+it cannot reliably detect the low-success student target of interest. This is reflected
+in the confusion matrix by the large proportion of low-success students identified as
+high success, coupled with the low precision and F1-score of the low-success class.
+Recall was moderate, meaning some of the low-success cases were captured by the model.
+However, the overall predictive power remained weak. The ROC curve for low-success detection
+did not extend far from the diagonal into the upper left corner, with an AUC of 0.67,
+further confirming that there was only limited discriminative ability. 
+Finally, the LD1 density plot showed substantial overlap between low- and high-success groups,
+suggesting that the predictors did not divide the two categories sharply.
+In summary, while these findings suggest that the model provides meaningful structure,
+it is not sufficiently effective in identifying low-success students, which is our main objective.
+It would require alternative models or additional predictors that improve the
+detection of students with low success.
