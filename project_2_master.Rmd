@@ -137,15 +137,13 @@ df <- df %>%
   select(-ZIPLOCL, -CDOBMM, -CDOBYY, -BASMID, -ALLGRADEX_std, -MOSTIMPT, -INTNUM, -ALLGRADEX_2019raw, -ALLGRADEX, -SEGRADES, - HHPARN19_BRD)
 ```
 
-# Exploratory Data Analysis
-
 
 # LDA
 ```{r}
 levels(df$success)
 ```
 
-# Choosing predictors for LDA
+## Choosing predictors for LDA
 
 We are using these predictors as they make sense for grades:
 
@@ -180,14 +178,14 @@ with the seven predictors that will be used in the LDA model. These predictors
 are for family structure, school type, school choice, internet access, school
 hours, parent education, and number of siblings.
 
-# Checking whether all variables are numeric
+## Checking whether all variables are numeric
 
 ```{r}
 df_model %>% 
   summarise(across(all_of(predictor_variables), ~ class(.)))
 ```
 
-# Test-Train Data
+## Test-Train Data
 
 ```{r}
 set.seed(123)
@@ -199,14 +197,15 @@ nrow(train_data)
 nrow(test_data)
 ```
 
-Stratified sampling based on the success variable is used to divide the data into
-an 80% training set and a 20% test set, preserving the same proportion of low and
-high success cases in both sets. This results in 7,472 observations for the training
-set and 1,869 observations for the test set. We train the LDA model on the training
-portion and evaluate the performance of the model using the test portion.
+Stratified sampling based on the success variable is used to divide the data
+into an 80% training set and a 20% test set, preserving the same proportion of
+low and high success cases in both sets. This results in 7,472 observations for
+the training set and 1,869 observations for the test set. We train the LDA model
+on the training portion and evaluate the performance of the model using the test
+portion.
 
 
-# Fitting the LDA Model
+## Fitting the LDA Model
 
 ```{r}
 lda_model <- discrim_linear() %>%
@@ -222,27 +221,29 @@ lda_model
 ```
 
 The LDA model is fit using equal class priors of 0.5 for low success and 0.5 for
-high success, giving equal weight to both groups during training instead of letting
-the model automatically favor the majority high-success class. This goes in line
-with our goal of increasing the detection of the low-success students. These priors
-are shown at the top of the output, followed by the means of each group: for example,
-low-success students average values like HHPARN19X = 1.786, EINTNET = 3.872,
-and PARGRADEX = 3.126, while high-success students have slightly higher values
-such as EINTNET = 3.910, SCHLHRSMK = 3.776, and PARGRADEX = 3.676. These differences
-represent how high academic resources and strong parental backgrounds are associated
-with high success, and how low values on these variables are associated with 
-low success-more generally, information the model then uses to predict which students are at risk. 
+high success, giving equal weight to both groups during training instead of
+letting the model automatically favor the majority high-success class. This goes
+in line with our goal of increasing the detection of the low-success students.
+These priors are shown at the top of the output, followed by the means of each
+group: for example, low-success students average values like HHPARN19X = 1.786,
+EINTNET = 3.872, and PARGRADEX = 3.126, while high-success students have
+slightly higher values such as EINTNET = 3.910, SCHLHRSMK = 3.776, and PARGRADEX
+= 3.676. These differences represent how high academic resources and strong
+parental backgrounds are associated with high success, and how low values on
+these variables are associated with low success-more generally, information the
+model then uses to predict which students are at risk.
 
-The discriminant coefficients further show which predictors pull a student toward
-the "low" classification: negative coefficients such as HHPARN19X (-0.705) and 
-SCCHOICE (-0.590) push the model toward predicting "low success," whereas positive
-coefficients such as EDCPUB (0.681), EINTNET (0.310), and PARGRADEX (0.467) shift
-the predictions toward "high success." Together, these numerical results show how
-the model combines predictor patterns to distinguish the students, including specific
-variables that serve to help highlight those more likely to fall into the low-success category,
-which meets the main objective of the analysis.
+The discriminant coefficients further show which predictors pull a student
+toward the "low" classification: negative coefficients such as HHPARN19X
+(-0.705) and SCCHOICE (-0.590) push the model toward predicting "low success,"
+whereas positive coefficients such as EDCPUB (0.681), EINTNET (0.310), and
+PARGRADEX (0.467) shift the predictions toward "high success." Together, these
+numerical results show how the model combines predictor patterns to distinguish
+the students, including specific variables that serve to help highlight those
+more likely to fall into the low-success category, which meets the main
+objective of the analysis.
 
-# Getting predictions on test data 
+## Getting predictions on test data 
 
 ```{r}
 lda_test <- augment(lda_model, new_data = test_data)
@@ -281,24 +282,25 @@ metrics <- bind_rows(
 
 metrics
 ```
-The confusion matrix indicates that this model continues to do well at predicting
-the high-success students, correctly identifying 1092 of them, but it continues to
-show weak performance for the low-success group. Of the 247 actual low-success students,
-only 144 were correctly identified as low, but 103 were misclassified as high,
-indicating that a large portion of the students that need attention are still missed.
-This trend is mirrored in the evaluation metrics: the precision for the low-success
-class is 0.21, which means only 21 percent of the students predicted as low are truly
-low, while the recall is 0.58, showing that the model captures a little more than half
-of the actual low-success students. Confirming this finding, the F1-score, balancing
-precision and recall, is 0.31 and thus again shows the model's poor ability to reliably
-flag low-performing students. Even though the overall accuracy is 66.13 percent, this
-is driven mainly by strong performance on the high-success group and does not reflect
-meaningful progress toward identifying low-success students. At the same time, the
-ROC AUC value of 0.67 indicates only moderate ability to correctly rank students
-based on their likelihood of having low success. In all, results indicate that even
-though the model may perform appropriately for high-success students, it is pretty
-limited with respect to detecting low-success students, which is actually the main
-challenge for this analysis.
+The confusion matrix indicates that this model continues to do well at
+predicting the high-success students, correctly identifying 1092 of them, but it
+continues to show weak performance for the low-success group. Of the 247 actual
+low-success students, only 144 were correctly identified as low, but 103 were
+misclassified as high, indicating that a large portion of the students that need
+attention are still missed. This trend is mirrored in the evaluation metrics:
+the precision for the low-success class is 0.21, which means only 21 percent of
+the students predicted as low are truly low, while the recall is 0.58, showing
+that the model captures a little more than half of the actual low-success
+students. Confirming this finding, the F1-score, balancing precision and recall,
+is 0.31 and thus again shows the model's poor ability to reliably flag
+low-performing students. Even though the overall accuracy is 66.13 percent, this
+is driven mainly by strong performance on the high-success group and does not
+reflect meaningful progress toward identifying low-success students. At the same
+time, the ROC AUC value of 0.67 indicates only moderate ability to correctly
+rank students based on their likelihood of having low success. In all, results
+indicate that even though the model may perform appropriately for high-success
+students, it is pretty limited with respect to detecting low-success students,
+which is actually the main challenge for this analysis.
 
 ```{r}
 library(dplyr)
@@ -325,20 +327,21 @@ ggplot(lda_values, aes(x = LD1, fill = success)) +
   theme_minimal()
 
 ```
-It is apparent that the LD1 distribution plot has shown us how well our LDA model
-separates the low success students from the high success ones, which is the whole
-point of our analysis. Low success students cluster around the left-hand side of
-the graph, with lower LD1 values, while high success students move to the right,
-where the LD1 values are higher. That means the model is learning some difference
-between the two groups. Still, there is a significant overlap between the two curves
-in the middle, and this directly explains why the model struggles to correctly
-identify low success students: many of the low success students fall within the
-same LD1 value range as that of high success students, so the model cannot confidently
-distinguish them. Even though the separation trend can be seen, the overlapping
-area shows that LD1 alone is not strong enough to isolate the low performing students,
-and thus the recall for the low group remains low. This visualization confirms
-that the model naturally prefers the high success group and reinforces our
-conclusion that identifying low success students remains difficult under this LDA approach.
+It is apparent that the LD1 distribution plot has shown us how well our LDA
+model separates the low success students from the high success ones, which is
+the whole point of our analysis. Low success students cluster around the
+left-hand side of the graph, with lower LD1 values, while high success students
+move to the right, where the LD1 values are higher. That means the model is
+learning some difference between the two groups. Still, there is a significant
+overlap between the two curves in the middle, and this directly explains why the
+model struggles to correctly identify low success students: many of the low
+success students fall within the same LD1 value range as that of high success
+students, so the model cannot confidently distinguish them. Even though the
+separation trend can be seen, the overlapping area shows that LD1 alone is not
+strong enough to isolate the low performing students, and thus the recall for
+the low group remains low. This visualization confirms that the model naturally
+prefers the high success group and reinforces our conclusion that identifying
+low success students remains difficult under this LDA approach.
 
 ```{r}
 library(ggplot2)
@@ -368,31 +371,44 @@ the ROC curve confirms that detecting low-success students remains challenging,
 directly related to our project goal of early identification of low performers.
 
 
-#Conclusion
+## Conclusion
 
 Overall, the LDA model has obvious limitations in reaching the main goal of
-identifying the students with low success. Whereas the model performs very well 
+identifying the students with low success. Whereas the model performs very well
 in high-success cases-it correctly classifies 1,092 high-success students-it is
 still struggling with the group of low success. Among the 247 actual low-success
-students, it identified only 103 correctly and misclassified 144 as high, meaning
-that more than half of the low performers were missed. This is also reflected in
-the evaluation metrics: the precision for low success is only 0.21, while the recall 
-is higher, 0.58, but the F1-score is still low at 0.31, confirming weak reliability
-in detecting low-performing students. The LD1 distribution plot further shows a big
-overlap between the low and high success students, which means the model cannot form
-a clear linear boundary to separate the two groups. The AUC of ROC is 0.67, which
-means the model only has a moderate ability to distinguish the low-success students
-from the high-success students. These results taken together demonstrate that the
-model is biased heavily towards high-success predictions and yet misses many students
-in need of academic support, which means this LDA approach does not adequately meet
-the project's objective of early identification of low-performing students. So, we tried 
-other models further.
+students, it identified only 144 correctly and misclassified 103 as high,
+meaning ~42% of low performers were missed. This is also
+reflected in the evaluation metrics: the precision for low success is only 0.21,
+while the recall is higher, 0.58, but the F1-score is still low at 0.31,
+confirming weak reliability in detecting low-performing students. The LD1
+distribution plot further shows a big overlap between the low and high success
+students, which means the model cannot form a clear linear boundary to separate
+the two groups. The AUC of ROC is 0.67, which means the model only has a
+moderate ability to distinguish the low-success students from the high-success
+students. These results taken together demonstrate that the model is biased
+heavily towards high-success predictions and yet misses many students in need of
+academic support, which means this LDA approach does not adequately meet the
+project's objective of early identification of low-performing students. So, we
+tried other models further.
 
 
 # Lasso Logistic Regression
-To try a logistic regression method for our Predicting Educational Success, we decided to use the LASSO regression method with our response variable still being SEGRADES. We decided to remove any rows that are missing to keep a better data set as it was large enough without including the missing variables. We continued with the categorical response of High grade earners being those who had received mostly A's and B's and our Low grade earners, those with C's or D's. 
 
-We chose to do LASSO regression because of how large the raw data set is. With LASSO we can quickly eliminate any predictors that have little to no use for our model or the question we are trying to solve. And with it, our issues with over fitting and multicollinearity are automatically solved within our program and we do not have to do any VIF checks or worry about including too many or too little predictors. 
+To try a logistic regression method for our Predicting Educational Success, we
+decided to use the LASSO regression method with our response variable still
+being SEGRADES. We decided to remove any rows that are missing to keep a better
+data set as it was large enough without including the missing variables. We
+continued with the categorical response of High grade earners being those who
+had received mostly A's and B's and our Low grade earners, those with C's or
+D's.
+
+We chose to do LASSO regression because of how large the raw data set is. With
+LASSO we can quickly eliminate any predictors that have little to no use for our
+model or the question we are trying to solve. And with it, our issues with over
+fitting and multicollinearity are automatically solved within our program and we
+do not have to do any VIF checks or worry about including too many or too little
+predictors.
 
 
 ```{r}
@@ -427,7 +443,8 @@ kable(na_count, caption = "Number of Rows with Any Missing Values")
 
 ```
 
-Separate our numerical variables from the rest of our data to make cleaning out the -1, 0, and 5 values with SEGRADES easier.
+Separate our numerical variables from the rest of our data to make cleaning out
+the -1, 0, and 5 values with SEGRADES easier.
 ```{r}
 num_vars <- c(
   "FHWKHRS", 
@@ -451,7 +468,9 @@ df <- df %>%
 
 ```
 
-Separate into our test and training set. We will use the training set to run our model. From there we will use the test data for our evaluation. We will then see how well our testing set does later on with this model.
+Separate into our test and training set. We will use the training set to run our
+model. From there we will use the test data for our evaluation. We will then see
+how well our testing set does later on with this model.
 ```{r}
 set.seed(1986)
 
@@ -471,7 +490,7 @@ test_y <- test$success
 
 ```
 
-#Building our LASSO model. 
+## Building our LASSO model. 
 
 ```{r}
 lasso.mod <- glmnet(
@@ -487,7 +506,10 @@ plot(lasso.mod)
 title("LASSO Coefficient Paths")
 ```
 
-Here we can see how each predictor’s coefficient changes as the penalty λ changes. It visualizes variable selection and shrinkage, letting you see which predictors enter the model and when. There are about 6 variables that enter the model early and the rest come around 4.5 for -Log(λ)
+Here we can see how each predictor’s coefficient changes as the penalty λ
+changes. It visualizes variable selection and shrinkage, letting you see which
+predictors enter the model and when. There are about 6 variables that enter the
+model early and the rest come around 4.5 for -Log(λ)
 ```{r}
 set.seed(1986)
 
@@ -504,7 +526,11 @@ title("LASSO Cross-Validation Curve")
 
 ```
 
-Above the plot is suggesting about 22 variables as we see the second dash line crossing right there with the MSE's. Right around that point, we have a -Log(λ) of between 3 and 5. And below we see that our best λ value is very small at 0.00841625 suggesting that the more predictors we keep the better our prediction model will be. 
+Above the plot is suggesting about 22 variables as we see the second dash line
+crossing right there with the MSE's. Right around that point, we have a -Log(λ)
+of between 3 and 5. And below we see that our best λ value is very small at
+0.00841625 suggesting that the more predictors we keep the better our prediction
+model will be.
 ```{r}
 best_lambda <- cv.lasso$lambda.min
 kable(best_lambda)
@@ -523,7 +549,9 @@ lasso.final <- glmnet(
 coef_final <- coef(lasso.final)
 
 ```
-This does work nicely with our MSE plot above as this also concludes with the idea of 22 variables. And the MSE of the 22 variables are better shown below in the table below.
+This does work nicely with our MSE plot above as this also concludes with the
+idea of 22 variables. And the MSE of the 22 variables are better shown below in
+the table below.
 
 
 ```{r}
@@ -542,7 +570,9 @@ mean(lasso.pred == test_y)
 
 ```
 
-Our training model gave us a 91.6% correct classification rate with our test data set, suggesting a very strong model that is consistent and reproducible in identifying true lows and false highs. 
+Our training model gave us a 91.6% correct classification rate with our test
+data set, suggesting a very strong model that is consistent and reproducible in
+identifying true lows and false highs.
 
 ```{r}
 lasso_table<-table(Predicted = lasso.pred, Actual = test_y)
@@ -560,12 +590,24 @@ ggplot(lasso_table, aes(x = Predicted, y = Actual, fill = Freq)) +
 ```
 
 
-The confusion matrix displays predicted classes on the rows and true classes on the columns. With this table we can see the total number of true positives, true negatives, false positives, and false negatives. Our true positive consisted of 1280 observations, our true negative had 51 total observations, while we had a false positive of 6 and a false negative of 116. Below we can see the metrics that describe how effective our model was:
-Recall (True negative (Low) + false negative (Low)) = 51 / 51+116 = 30.54%
-Precision (Our predicted negatives or Low's) = 51 / 51+6 = 89.47%
-Overall Accuracy = 51+1280/1453 = 91.6%
+The confusion matrix displays predicted classes on the rows and true classes on
+the columns. With this table we can see the total number of true positives, true
+negatives, false positives, and false negatives. Our true positive consisted of
+1280 observations, our true negative had 51 total observations, while we had a
+false positive of 6 and a false negative of 116. Below we can see the metrics
+that describe how effective our model was: Recall (True negative (Low) + false
+negative (Low)) = 51 / 51+116 = 30.54% Precision (Our predicted negatives or
+Low's) = 51 / 51+6 = 89.47% Overall Accuracy = 51+1280/1453 = 91.6%
 
-Our main priority is looking at our "false positives", meaning the students we predicted to be high and who are actually low. This is an issue because with our model if we predict someone to be getting high grades and they are actually getting low they would not be getting the help they need. We are not so worried about false negatives as those students are predicted low who are actually high will just get more help and will do better thus furthering themselves away from being predicted as low. So, with our model there is the error of 116 predicted high students who were actually in the low group who would not receive the necessary help.
+Our main priority is looking at our "false positives", meaning the students we
+predicted to be high and who are actually low. This is an issue because with our
+model if we predict someone to be getting high grades and they are actually
+getting low they would not be getting the help they need. We are not so worried
+about false negatives as those students are predicted low who are actually high
+will just get more help and will do better thus furthering themselves away from
+being predicted as low. So, with our model there is the error of 116 predicted
+high students who were actually in the low group who would not receive the
+necessary help.
 
 ```{r}
 roc_obj <- roc(test_y, as.numeric(lasso.prob))
@@ -574,9 +616,18 @@ auc(roc_obj)
 
 ```
 
-In conclusion, to evaluate the model’s ability, we plotted the ROC curve using the predicted probabilities from the LASSO model. The ROC curve illustrates difference between our true identification rate for Low and false identification rate for those who are Low and are identified as High (False High) across different classification thresholds. The Area Under the Curve (AUC) was 0.9337. This high of value shows that our model performed very well as it suggests that the model has distinguished between true lows and false highs. This high AUC demonstrates that the LASSO model is effective at ranking students by their probability of academic success, making it a reliable tool for identifying students who may need additional support.
+In conclusion, to evaluate the model’s ability, we plotted the ROC curve using
+the predicted probabilities from the LASSO model. The ROC curve illustrates
+difference between our true identification rate for Low and false identification
+rate for those who are Low and are identified as High (False High) across
+different classification thresholds. The Area Under the Curve (AUC) was 0.9337.
+This high of value shows that our model performed very well as it suggests that
+the model has distinguished between true lows and false highs. This high AUC
+demonstrates that the LASSO model is effective at ranking students by their
+probability of academic success, making it a reliable tool for identifying
+students who may need additional support.
 
-# Support Vector Classification
+# Support Vector Machines Classifier
 
 After exploring LDA and Lasso Logistic Regression models that we examined in
 class, we also wanted to implement a Support Vector Classifier (SVC) model to
@@ -589,7 +640,7 @@ tested.
 
 We created a pipeline that includes Dimensionality Reduction using the
 `PCAmixdata` package, followed by SVC modeling using the `e1071` package used in
-the textbook. We tuned hyperparameters such as the cost parameter (C) and kernel
+the textbook. We tuned hyperparameters such as the `cost` parameter (C) and `gamma`
 using cross-validation and parallel baysian optimization to identify the best
 model using PR-AUC on the minority class as the evaluation metric using the
 `ParBayesianOptimization` package.
@@ -742,8 +793,7 @@ and downstream predictive modeling.
 ## Fitting PCAmix and SVC with Bayesian Hyperparameter Optimization
 
 ```{r Fitting PCAmix for 10 components, include=FALSE, eval=FALSE}
-## ---- PCAmix with 10 components + Varimax rotation -------------------------
-# 1. Fit PCAmix with 10 components
+# Fit PCAmix with 10 components
 pcamix_train_10 <- PCAmix(
   X.quanti = X.quanti_train,
   X.quali  = X.quali_train,
@@ -752,13 +802,13 @@ pcamix_train_10 <- PCAmix(
   graph = FALSE
 )
 
-# 2. TRAIN SCORES (10 PCs)
+# train scores (10 PCs)
 train_scores_10 <- pcamix_train_10$ind$coord
 train_scores_10_df <- as.data.frame(train_scores_10)
 colnames(train_scores_10_df) <- paste0("PC", 1:10)
 train_scores_10_df$success <- train_y
 
-# 3. TEST SCORES
+# test scores
 test_scores_10 <- predict(
   pcamix_train_10,
   X.quanti = X.quanti_test,
@@ -772,23 +822,18 @@ test_scores_10_df$success <- test_y
 
 
 ```{r Bayesian optimisation for SVC, include=TRUE, eval=FALSE}
-## ---- bayesian-optimisation -------------------------------------------------
-# 1. Packages ---------------------------------------------------------
-library(ParBayesianOptimization)   # bayesOpt
-library(e1071)                      # svm
-library(rsample)                    # vfold_cv  <-- THIS IS THE FIX
-library(yardstick)                  # pr_auc_vec
-library(dplyr)                      # mutate, map, etc.
-library(doParallel)                 # parallel backend
+library(ParBayesianOptimization)   
+library(e1071)                     
+library(rsample)                    
+library(yardstick)                 
+library(dplyr)                      
+library(doParallel)                 
 
-# 2. Parallel set-up --------------------------------------------------
 cl <- makeCluster(detectCores() - 1)
 registerDoParallel(cl)
 
-# Export data + objects
 clusterExport(cl, varlist = c("train_scores_10_df", "class_weights"))
 
-# Load required packages on every worker
 clusterEvalQ(cl, {
   library(e1071)
   library(rsample)      # <-- vfold_cv lives here
@@ -796,13 +841,12 @@ clusterEvalQ(cl, {
   library(dplyr)
 })
 
-# 3. Scoring function (5-fold CV, PR-AUC) -----------------------------
 svm_cv_score <- function(cost, gamma) {
   # Guard against illegal values
   if (cost <= 0 || gamma <= 0) return(list(Score = -Inf))
 
   tryCatch({
-    set.seed(123)                                   # reproducible folds
+    set.seed(123)                                   
     folds <- vfold_cv(train_scores_10_df, v = 5, strata = success)
 
     pr_vals <- numeric(nrow(folds))
@@ -830,17 +874,15 @@ svm_cv_score <- function(cost, gamma) {
 
     list(Score = mean(pr_vals, na.rm = TRUE))
   }, error = function(e) {
-    list(Score = -Inf)      # any crash → terrible score
+    list(Score = -Inf)      
   })
 }
 
-# 4. Bounds -----------------------------------------------------------
 bounds <- list(
   cost  = c(0.1, 50),
   gamma = c(0.01, 2)
 )
 
-# 5. Bayesian optimisation -------------------------------------------
 set.seed(123)
 
 opt <- bayesOpt(
@@ -855,20 +897,18 @@ opt <- bayesOpt(
   parallel = TRUE,
   gsPoints = 200,
   acqThresh = 0.9,
-  errorHandling = 10,          # allow up to 10 failures
+  errorHandling = 10,          
   plotProgress = TRUE,
   saveFile = "svm_bayes_opt.RDS",
   verbose = 2
 )
 
-stopCluster(cl)   # clean-up
+stopCluster(cl)  
 
-# 6. Best parameters --------------------------------------------------
 best <- getBestPars(opt)
 cat(sprintf("Best cost = %.3f, gamma = %.4f, CV PR-AUC = %.4f\n",
             best$cost, best$gamma, max(opt$scoreSummary$Score)))
 
-# 7. Final model on the *full* training set ---------------------------
 final_svm_10 <- svm(
   success ~ .,
   data = train_scores_10_df,
@@ -879,7 +919,6 @@ final_svm_10 <- svm(
   probability = TRUE
 )
 
-# 8. Test PR-AUC ------------------------------------------------------
 test_pred <- predict(final_svm_10, test_scores_10_df, probability = TRUE)
 test_prob <- attr(test_pred, "probabilities")[, "low"]
 
@@ -1047,16 +1086,47 @@ while maintaining acceptable precision and accuracy.
 
 # Model Selection
 
-After completing three separate modeling approaches (LDA, LASSO Logistic Regression, and SVM Classifier) we observed clear differences in predictive performance, with our main focus being on the identification of low students.
+After completing three separate modeling approaches (LDA, LASSO Logistic
+Regression, and SVM Classifier) we observed clear differences in predictive
+performance, with our main focus being on the identification of low performing
+students.
 
-LDA did decently well for the majority of high students (overall accuracy ≈ 66%) but struggled with low students (recall =58%, precision =21%, F1-Score =0.31). The LDA distributions showed significant overlap, showing how low-performing students were misclassified, which could pose issues as students who may need the extra help would not receive it.
+LDA did decently well for the majority of high students (overall accuracy ≈ 66%)
+but struggled with low students (recall =58%, precision =21%, F1-Score =0.31).
+The LDA distributions showed significant overlap, showing how low-performing
+students were misclassified, which could pose issues as students who may need
+the extra help would not receive it.
 
-LASSO Logistic Regression appeared to have the best overall predictive ability, with 91.6% accuracy and an AUC of 0.9337. While recall for the low-success class was low (30.54%), an good precision score (89.47%), and had an excellent overall accuracy (91.6%) the model still misclassified low-success students as high at an alarming rate. Which is bound to happen as no model ever has been 100% completely perfect without multicollinearity and overfitting the data.
+LASSO Logistic Regression appeared to have the best overall predictive ability,
+with 91.6% accuracy and an AUC of 0.9337. While recall for the low-success class
+was low (30.54%), an good precision score (89.47%), and had an excellent overall
+accuracy (91.6%) the model still misclassified low-success students as high at
+an alarming rate. Which is bound to happen as no model ever has been 100%
+completely perfect without multicollinearity and overfitting the data.
 
-SVM Classifier achieved a high recall (=89.5%) for low-success students, and had a good precision score (=40.8%) and overall accuracy (=81.5%). The PR-AUC (0.634) showed strong low ranking performance, and the precision–recall curve shows the model’s capacity to detect at-risk low students consistently.
+SVM Classifier achieved a high recall (=89.5%) for low-success students, and had
+a mediocre precision score (=40.8%) and overall accuracy (=81.5%). The PR-AUC
+(0.634) showed strong low ranking performance, and the precision–recall curve
+shows the model’s capacity to detect at-risk low students consistently.
 
-Overall, if our goal is to identify those students who are in desperate need of help (Low students), we will want to pick the model that best predicts those students who are low and are predicted low at a high rate, but more importantly having a low rate of students who are predicted high who are low. Right away, we can tell that it is between our LDA and our SVM Classifier models to use as our final model as LASSO had a lower overall and recall accuracy compared to the other two. 
+Overall, if our goal is to identify those students who are in desperate need of
+help (Low students), we will want to pick the model that best predicts those
+students who are low and are predicted low at a high rate, but more importantly
+having a low rate of students who are predicted high who are low. Right away, we
+can tell that it is between our LDA and our SVM Classifier models to use as our
+final model as LASSO had a lower recall accuracy compared to the other two.
 
-So between our LDA and SVM Classifier models. Looking at both, they each have very different recall percentages indicating that one correctly predicts a low student at a better rate. Our biggest concern is looking at our recall percentage as we do not want to identify low students as high as they will not receive the needed help. With that, our best model would be our SVM Classifier model as it blows LASSO and LDA out with an extremely high value of 89.5% as LDA only has a recall percentage of 58% which is significantly lower then our SVM Classifier model.
+So between our LDA and SVM Classifier models. Looking at both, they each have
+very different recall percentages indicating that one correctly predicts a low
+student at a better rate. Our biggest concern is looking at our recall
+percentage as we do not want to identify low students as high as they will not
+receive the needed help. With that, our best model would be our SVM Classifier
+model as it blows LASSO and LDA out with an extremely high value of 89.5% as LDA
+only has a recall percentage of 58% which is significantly lower then our SVM
+Classifier model.
 
-In conclusion, our final chosen model is the SVM Classifier model, as it maintains a better recall value than the LASSO model and LDA model. In addition, this model will give us the best chance at identifying low students correctly, provides very few false negatives (predicted high but is low), and still provides a serviceable precision score. 
+In conclusion, our final chosen model is the SVM Classifier model, as it
+maintains a better recall value than the LASSO model and LDA model. In addition,
+this model will give us the best chance at identifying low students correctly,
+provides very few false negatives (predicted high but is low), and still
+provides a serviceable precision score.
