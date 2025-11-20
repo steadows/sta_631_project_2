@@ -284,7 +284,7 @@ metrics
 The confusion matrix indicates that this model continues to do well at predicting
 the high-success students, correctly identifying 1092 of them, but it continues to
 show weak performance for the low-success group. Of the 247 actual low-success students,
-only 103 were correctly identified as low, but 144 were misclassified as high,
+only 144 were correctly identified as low, but 103 were misclassified as high,
 indicating that a large portion of the students that need attention are still missed.
 This trend is mirrored in the evaluation metrics: the precision for the low-success
 class is 0.21, which means only 21 percent of the students predicted as low are truly
@@ -561,8 +561,8 @@ ggplot(lasso_table, aes(x = Predicted, y = Actual, fill = Freq)) +
 
 
 The confusion matrix displays predicted classes on the rows and true classes on the columns. With this table we can see the total number of true positives, true negatives, false positives, and false negatives. Our true positive consisted of 1280 observations, our true negative had 51 total observations, while we had a false positive of 6 and a false negative of 116. Below we can see the metrics that describe how effective our model was:
-Recall (True negative (Low) + false negative (Low)) = 51 / 51+6 = 89.47%
-Precision (Our predicted negatives or Low's) = 51 / 51+116 = 30.54%
+Recall (True negative (Low) + false negative (Low)) = 51 / 51+116 = 30.54%
+Precision (Our predicted negatives or Low's) = 51 / 51+6 = 89.47%
 Overall Accuracy = 51+1280/1453 = 91.6%
 
 Our main priority is looking at our "false positives", meaning the students we predicted to be high and who are actually low. This is an issue because with our model if we predict someone to be getting high grades and they are actually getting low they would not be getting the help they need. We are not so worried about false negatives as those students are predicted low who are actually high will just get more help and will do better thus furthering themselves away from being predicted as low. So, with our model there is the error of 116 predicted high students who were actually in the low group who would not receive the necessary help.
@@ -1051,12 +1051,12 @@ After completing three separate modeling approaches (LDA, LASSO Logistic Regress
 
 LDA did decently well for the majority of high students (overall accuracy ≈ 66%) but struggled with low students (recall =58%, precision =21%, F1-Score =0.31). The LDA distributions showed significant overlap, showing how low-performing students were misclassified, which could pose issues as students who may need the extra help would not receive it.
 
-LASSO Logistic Regression appeared to have the best overall predictive ability, with 91.6% accuracy and an AUC of 0.9337. While recall for the low-success class was high (89.47), an ok precision score (30.54%), and had an excellent overall accuracy (91.6%) the model still misclassified some low-success students, though far fewer than LDA. Which is bound to happen as no model ever has been 100% completely perfect without multicollinearity and overfitting the data.
+LASSO Logistic Regression appeared to have the best overall predictive ability, with 91.6% accuracy and an AUC of 0.9337. While recall for the low-success class was low (30.54%), an good precision score (89.47%), and had an excellent overall accuracy (91.6%) the model still misclassified low-success students as high at an alarming rate. Which is bound to happen as no model ever has been 100% completely perfect without multicollinearity and overfitting the data.
 
 PCAmix achieved a high recall (=89.5%) for low-success students, and had a good precision score (=40.8%) and overall accuracy (=81.5%). The PR-AUC (0.634) showed strong low ranking performance, and the precision–recall curve shows the model’s capacity to detect at-risk low students consistently.
 
-Overall, if our goal is to identify those students who are in desperate need of help (Low students), we will want to pick the model that best predicts those students who are low and are predicted low at a high rate, but more importantly having a low rate of students who are predicted high who are low. Right away, we can tell that it is between our LASSO and our PCAmix models to use as our final model as LDA had a lower overall and recall accuracy compared to the other two. 
+Overall, if our goal is to identify those students who are in desperate need of help (Low students), we will want to pick the model that best predicts those students who are low and are predicted low at a high rate, but more importantly having a low rate of students who are predicted high who are low. Right away, we can tell that it is between our LASSO and our PCAmix models to use as our final model as LDA had a lower overall and precision accuracy compared to the other two. 
 
-So between our LASSO and PCAmix models. Looking at both, they each have almost exactly the same recall percentage indicating that they both correctly predict a low student at the same rate. Yet our PCAmix model has a higher precision score of 40.8% as compared to our LASSO model, meaning that it didn't predict so many high students as low students. While this is not a major issue as those who are high being identified as low will only give them more help to do better, it is still important to look at it when deciding between the two due to the recall being so close. 
+So between our LASSO and PCAmix models. Looking at both, they each have very different recall percentages indicating that one correctly predicts a low student at a better rate. While our LASSO model has a higher precision score of 89.47% as compared to our PCAmix model, meaning that it didn't predict so many high students as low students. While this is not a major issue as those who are high being identified as low will only give them more help to do better, it is still important to look at. But our biggest concern is looking at our recall percentage as we do not want to identify low students as high as they will not receive the needed help. With that, our best model would be our PCAmix model as it blows LASSO and LDA out with an extremely high value of 89.5%
 
-In conclusion, our final chosen model is the PCAmix model, as it has a very high recall that is very close to LASSO's, yet maintains a better precision value than the LASSO model. This model will give us the best chance at identifying low students correctly, provides very few false positives (predicted high but is low), and gives us a better predicted low when high percentage than all other models. 
+In conclusion, our final chosen model is the PCAmix model, as it maintains a better recall value than the LASSO model and LDA model. In addition, this model will give us the best chance at identifying low students correctly, provides very few false negatives (predicted high but is low), and still provides a serviceable precision score. 
